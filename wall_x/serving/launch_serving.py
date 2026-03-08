@@ -18,7 +18,10 @@ import yaml
 from pathlib import Path
 from typing import List
 
-import tyro
+try:
+    import tyro  # type: ignore
+except Exception:  # pragma: no cover
+    tyro = None
 
 from wall_x.serving.policy.wall_x_policy import WallXPolicy
 from wall_x.serving.websocket_policy_server import WebsocketPolicyServer
@@ -216,5 +219,96 @@ def main(args: Args) -> None:
         sys.exit(1)
 
 
+def _parse_args_argparse(argv: List[str]) -> Args:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Serve a Wall-X model over websockets.")
+    parser.add_argument(
+        "--env",
+        default=EnvMode.LIBERO.value,
+        choices=[e.value for e in EnvMode],
+        help="Environment preset (affects defaults/metadata only).",
+    )
+    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--host", type=str, default="0.0.0.0")
+    parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--default-prompt", type=str, default=None)
+
+    # tyro-style nested flags used in README/infer scripts.
+    parser.add_argument("--model-config.model-path", dest="model_path", type=str)
+    parser.add_argument(
+        "--model-config.action-tokenizer-path", dest="action_tokenizer_path", type=str
+    )
+    parser.add_argument(
+        "--model-config.train-config-path", dest="train_config_path", type=str
+    )
+    parser.add_argument("--model-config.action-dim", dest="action_dim", type=int, default=None)
+    parser.add_argument("--model-config.state-dim", dest="state_dim", type=int, default=None)
+    parser.add_argument("--model-config.pred-horizon", dest="pred_horizon", type=int, default=None)
+    parser.add_argument("--model-config.device", dest="device", type=str, default=None)
+    parser.add_argument("--model-config.dtype", dest="dtype", type=str, default=None)
+    parser.add_argument("--model-config.predict-mode", dest="predict_mode", type=str, default=None)
+    parser.add_argument(
+        "--model-config.camera-key",
+        dest="camera_key",
+        nargs="+",
+        default=None,
+    )
+
+    ns = parser.parse_args(argv)
+    env_mode = EnvMode(ns.env)
+
+    args = Args(
+        env=env_mode,
+        model_config=None,
+        default_prompt=ns.default_prompt,
+        port=ns.port,
+        host=ns.host,
+        debug=ns.debug,
+    )
+
+    wants_model_config = any(
+        getattr(ns, k) is not None
+        for k in ["model_path", "action_tokenizer_path", "train_config_path"]
+    )
+    if wants_model_config:
+        missing = [
+            k
+            for k in ["model_path", "action_tokenizer_path", "train_config_path"]
+            if getattr(ns, k) is None
+        ]
+        if missing:
+            parser.error(
+                "Missing required model config flags: "
+                + ", ".join(f"--model-config.{m.replace('_', '-')}" for m in missing)
+            )
+
+        base = DEFAULT_CONFIGS[env_mode]
+        args.model_config = ModelConfig(
+            model_path=ns.model_path,
+            action_tokenizer_path=ns.action_tokenizer_path,
+            train_config_path=ns.train_config_path,
+            action_dim=base.action_dim if ns.action_dim is None else ns.action_dim,
+            state_dim=base.state_dim if ns.state_dim is None else ns.state_dim,
+            pred_horizon=base.pred_horizon if ns.pred_horizon is None else ns.pred_horizon,
+            device=base.device if ns.device is None else ns.device,
+            dtype=base.dtype if ns.dtype is None else ns.dtype,
+            predict_mode=base.predict_mode if ns.predict_mode is None else ns.predict_mode,
+            camera_key=base.camera_key if ns.camera_key is None else ns.camera_key,
+        )
+
+    return args
+
+
+def parse_args(argv: List[str] | None = None) -> Args:
+    argv = sys.argv[1:] if argv is None else argv
+    if tyro is not None:
+        try:
+            return tyro.cli(Args)
+        except Exception:
+            pass
+    return _parse_args_argparse(list(argv))
+
+
 if __name__ == "__main__":
-    main(tyro.cli(Args))
+    main(parse_args())

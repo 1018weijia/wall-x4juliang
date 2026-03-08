@@ -43,7 +43,7 @@ KEY_MAPPINGS = {
         "state": "observation.state",
         "action": "action",
     },
-    "libero": {
+    "libero_all": {
         "camera": {
             "observation.images.faceImg": "face_view",
             "observation.images.rightImg": "right_wrist_view",
@@ -59,6 +59,15 @@ KEY_MAPPINGS = {
         },
         "state": "observation.state",
         "action": "action",
+    },
+    "stack_bowls_rc": {
+        "camera": {
+            "global_image": "face_view",
+            "right_image": "right_wrist_view",
+            "wrist_image": "wrist_view",
+        },
+        "state": "state",
+        "action": "actions",
     },
 }
 

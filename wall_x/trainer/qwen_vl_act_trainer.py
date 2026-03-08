@@ -31,6 +31,19 @@ from wall_x.data.load_lerobot_dataset import (
 import copy
 
 
+def _format_eta_seconds(seconds: float) -> str:
+    """Format seconds as DdHH:MM:SS (days omitted if 0)."""
+    if seconds is None:
+        return "N/A"
+    seconds_i = int(max(0, seconds))
+    days, rem = divmod(seconds_i, 86400)
+    hours, rem = divmod(rem, 3600)
+    mins, secs = divmod(rem, 60)
+    if days > 0:
+        return f"{days}d{hours:02d}:{mins:02d}:{secs:02d}"
+    return f"{hours:02d}:{mins:02d}:{secs:02d}"
+
+
 def timer(func):
     """
     Decorator to measure function execution time.
@@ -174,6 +187,10 @@ class QwenVlAct_Trainer:
         self.global_step = 0
         self.num_epoch = self.config["num_epoch"]
         self.initial_step = 0
+        # Smoothed iteration time used for ETA display.
+        self._eta_iter_time_ema = None
+        # If set, training will stop once `global_step >= num_training_steps`.
+        self._stop_training = False
 
         # Data and model configuration
         self.dataload_config = get_data_configs(self.config["data"])
@@ -285,6 +302,16 @@ class QwenVlAct_Trainer:
         # Main training loop
         for epoch in range(self.start_epoch, self.num_epoch):
             self.train_loop(epoch)
+            if self._stop_training:
+                self.print_rank0(
+                    f"[STOP] Reached num_training_steps={self.config.get('num_training_steps')} at global_step={self.global_step}.",
+                    flush=True,
+                )
+                # Save a final checkpoint for this stopping point.
+                self.accelerator.wait_for_everyone()
+                self.save_checkpoint(epoch, step=self.global_step)
+                self.accelerator.wait_for_everyone()
+                break
             self.accelerator.wait_for_everyone()
 
             if (epoch + 1) % self.config.get("epoch_save_interval", 1) == 0:
@@ -407,6 +434,14 @@ class QwenVlAct_Trainer:
                         self.lr_scheduler.step()
                         self.global_step += 1
                         lr = self.lr_scheduler.get_last_lr()[0]
+                        num_training_steps = self.config.get("num_training_steps", None)
+                        if (
+                            isinstance(num_training_steps, int)
+                            and num_training_steps > 0
+                            and self.global_step >= num_training_steps
+                        ):
+                            # Let the outer epoch loop handle final checkpointing and exit cleanly.
+                            self._stop_training = True
 
                         # Gather loss across all processes for logging
                         train_loss = (
@@ -510,6 +545,8 @@ class QwenVlAct_Trainer:
 
                 if enable_profiling:
                     profiler.step()
+                if self._stop_training:
+                    break
 
         finally:
             if enable_profiling:
@@ -852,6 +889,27 @@ class QwenVlAct_Trainer:
             lr (float): Current learning rate
             time_per_step (float): Time taken for current step
         """
+        # Smooth per-iter time a bit so ETA isn't too noisy.
+        beta = float(self.config.get("eta_ema_beta", 0.95))
+        if self._eta_iter_time_ema is None:
+            self._eta_iter_time_ema = float(time_per_step)
+        else:
+            self._eta_iter_time_ema = beta * float(self._eta_iter_time_ema) + (1 - beta) * float(time_per_step)
+        iter_time = float(self._eta_iter_time_ema)
+
+        # ETA within current epoch (based on dataloader iterations).
+        remaining_epoch_iters = max(0, int(total_train_iter) - int(current_train_iter) - 1)
+        eta_epoch_s = remaining_epoch_iters * iter_time
+
+        # ETA to reach `num_training_steps` optimizer steps (global_step) if configured.
+        num_training_steps = self.config.get("num_training_steps", None)
+        grad_accum = int(self.config.get("gradient_accumulation_steps", 1))
+        eta_steps_s = None
+        if isinstance(num_training_steps, int) and num_training_steps > 0:
+            remaining_steps = max(0, num_training_steps - int(self.global_step))
+            # global_step advances once per grad-accum window, so approx seconds/step ~= iter_time * grad_accum.
+            eta_steps_s = remaining_steps * iter_time * max(1, grad_accum)
+
         timers_to_log = [
             "interval-time",
             "data-load",
@@ -863,9 +921,14 @@ class QwenVlAct_Trainer:
         log_string = f" [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]"
         log_string += " epoch {:3d}/{:3d} |".format(current_epoch, total_epoch)
         log_string += " iter {:6d}/{:6d} |".format(current_train_iter, total_train_iter)
+        if isinstance(num_training_steps, int) and num_training_steps > 0:
+            log_string += " step {:6d}/{:6d} |".format(int(self.global_step), int(num_training_steps))
         log_string += " loss {:.6f} |".format(loss)
         log_string += " lr {:.6f} |".format(lr)
         log_string += " time_per_step_avg {:.6f}s |".format(time_per_step)
+        log_string += f" eta_epoch {_format_eta_seconds(eta_epoch_s)} |"
+        if eta_steps_s is not None:
+            log_string += f" eta_steps {_format_eta_seconds(eta_steps_s)} |"
 
         print_rank_last(log_string)
         self.timers.log(timers_to_log, normalizer=1)

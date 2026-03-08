@@ -2,8 +2,8 @@
 # This configuration supports multi-modal learning with vision, language, and action data
 
 # Model and paths configuration
-log_name: "juliang-plan_libero"
-log_project: "libero_juliang"
+log_name: "juliang-plan_franka"
+log_project: "libero_juliang_franka"
 
 use_fast_tokenizer: false
 
@@ -19,7 +19,7 @@ processor_path: "/mnt/data2/lfwj/lingbot-vla/Qwen2.5-VL-3B-Instruct"
 pretrained_qwen_vl_path: "/mnt/data2/lfwj/lingbot-vla/Qwen2.5-VL-3B-Instruct"
 qwen_vl_act_config_path: "/mnt/data2/lfwj/wall-x4juliang/wall-oss-flow/config.json"
 
-save_path: "/mnt/data2/lfwj/wall-x4juliang/ckpt/libero/juliang-plan_libero"
+save_path: "/mnt/data2/lfwj/wall-x4juliang/ckpt/franka/"
 # Torch Profile
 profile: False
 profile_save_path: ./profile/
@@ -29,12 +29,12 @@ profile_active_iters: 2
 
 # Training hyperparameters
 num_warmup_steps: 1000
-num_training_steps: 300000
+num_training_steps: 64000000
 learning_rate: 0.00005
 min_lr: 0.00001
-num_epoch: 13
+num_epoch: 30
 gradient_accumulation_steps: 2
-batch_size_per_gpu: 12
+batch_size_per_gpu: 8
 padding_side: left
 epoch_save_interval: 3
 
@@ -50,11 +50,11 @@ agent_pos_config:
   follow_right_ee_rotation: 3
   follow_right_gripper: 1
 
-norm_stats_path: "/mnt/data2/lfwj/wall-x4juliang/libero_all/all_robots_action_stats.json"
+norm_stats_path: "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc/all_robots_action_stats.json"
 
 enable_customized_robot_config: true
 customized_robot_config:
-  name: "libero_all"
+  name: "stack_bowls_rc"
   customized_dof_config:
     "panda_action_eef_with_gripper": 7
 
@@ -76,8 +76,8 @@ data:
 
   # LeRobot dataset configuration
   lerobot_config:
-    repo_id: "libero_all"
-    root: "/mnt/data2/lfwj/wall-x4juliang/libero_all"
+    repo_id: "stack_bowls_rc"
+    root: "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc"
     episodes: null
     image_transforms: null
     delta_timestamps: null
@@ -87,7 +87,7 @@ data:
     download_videos: true
     video_backend: null
 
-  action_horizon: 10
+  action_horizon: 32
   train_test_split: 0.95
 
   # Action keys for observation and prediction
@@ -106,6 +106,7 @@ data:
     face_view: 256
     left_wrist_view: 256
     right_wrist_view: 256
+    wrist_view: 256
     move1_view: 256
     move2_view: 256
     top_view: 256

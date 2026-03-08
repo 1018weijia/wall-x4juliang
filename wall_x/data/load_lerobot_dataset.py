@@ -498,9 +498,31 @@ def load_lerobot_data(
     batch_size = config.get("batch_size_per_gpu", 8)
     episodes = np.arange(episodes_num).tolist()
 
+    # Optional: user-specified episode subset.
+    # Supports:
+    # - lerobot_config.episodes: null (default) -> use full dataset with train_test_split
+    # - lerobot_config.episodes: 100 -> use episodes [0..99] as train set (no split)
+    # - lerobot_config.episodes: [0, 1, 5, ...] -> use these episodes as train set (no split)
+    episodes_spec = lerobot_config.get("episodes", None)
+    if episodes_spec is not None:
+        if isinstance(episodes_spec, int):
+            n = max(0, min(int(episodes_spec), int(episodes_num)))
+            episodes = list(range(n))
+        elif isinstance(episodes_spec, (list, tuple, np.ndarray)):
+            episodes = [int(e) for e in episodes_spec]
+        else:
+            raise TypeError(
+                f"lerobot_config.episodes must be null/int/list, got {type(episodes_spec)}"
+            )
+
     train_test_split = dataload_config.get("train_test_split", 0.95)
-    train_episodes = episodes[: int(episodes_num * train_test_split)]
-    test_episodes = episodes[int(episodes_num * train_test_split) :]
+    if episodes_spec is not None:
+        # When user pins episodes, treat them as the full training set.
+        train_episodes = episodes
+        test_episodes = []
+    else:
+        train_episodes = episodes[: int(episodes_num * train_test_split)]
+        test_episodes = episodes[int(episodes_num * train_test_split) :]
 
     train_dataset = LeRobotDataset(
         repo_id,

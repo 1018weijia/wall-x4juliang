@@ -421,7 +421,10 @@ class InferConfig:
             )
 
         self.model_path = checkpoint_path
-        self.action_tokenizer_path = "/x2robot_v2/Models/fast/"
+        # Optional: "fast" action tokenizer used by some checkpoints.
+        # If unset / invalid we keep it as None to avoid transformers trying to
+        # fetch from the Hub with a bad local path.
+        self.action_tokenizer_path: str | None = None
 
         # Other configuration attributes
         self.robot_host = robot_host
@@ -527,6 +530,24 @@ class InferConfig:
                 self.train_config["action_tokenizer_path"] = ckpt_dir
             else:
                 print("[LoadConfig] Cannot load action tokenizer! ")
+
+        # Resolve action tokenizer path for inference.
+        # Many of our configs don't use fast action tokenization (use_fast_tokenizer: false),
+        # and passing a bogus default path will crash in transformers.
+        use_fast_tok = bool(self.train_config.get("use_fast_tokenizer", False))
+        if use_fast_tok:
+            atp = self.train_config.get("action_tokenizer_path", None)
+            if atp is None:
+                # If the checkpoint already contains tokenizer files, use it.
+                if os.path.exists(tokenizer_file) and os.path.exists(tokenizer_config_file):
+                    atp = ckpt_dir
+                    self.train_config["action_tokenizer_path"] = ckpt_dir
+            if atp is not None and os.path.exists(str(atp)):
+                self.action_tokenizer_path = str(atp)
+            else:
+                self.action_tokenizer_path = None
+        else:
+            self.action_tokenizer_path = None
 
     def _load_model_config(self):
         ckpt_config_path = os.path.join(self._checkpoint_path, "config.json")

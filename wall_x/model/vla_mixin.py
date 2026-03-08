@@ -13,14 +13,35 @@ from packaging import version
 
 from transformers import GenerationMixin
 from transformers.activations import ACT2FN
-from transformers.modeling_utils import AttentionInterface
+#
+# transformers compat:
+# - Some versions expose `AttentionInterface` (with `.valid_keys()`).
+# - transformers==4.49.0 exposes `ALL_ATTENTION_FUNCTIONS` as a dict instead.
+try:
+    # Newer HF versions.
+    from transformers.modeling_utils import AttentionInterface  # type: ignore
+
+    ALL_ATTENTION_FUNCTIONS = AttentionInterface()
+except Exception:
+    # Older HF versions (e.g. 4.49.0).
+    from transformers.modeling_utils import (  # type: ignore
+        ALL_ATTENTION_FUNCTIONS as _HF_ALL_ATTENTION_FUNCTIONS,
+    )
+
+    class _AttentionInterfaceCompat:
+        def __init__(self, registry):
+            self._registry = registry
+
+        def valid_keys(self):
+            return list(self._registry.keys())
+
+    ALL_ATTENTION_FUNCTIONS = _AttentionInterfaceCompat(_HF_ALL_ATTENTION_FUNCTIONS)
 
 from transformers.utils import logging, is_torch_xla_available
 
 from wall_x.model.action_head import ActionProcessor
 from wall_x.model.model_utils import find_first_last_ones
 
-ALL_ATTENTION_FUNCTIONS: AttentionInterface = AttentionInterface()
 logger = logging.get_logger(__name__)
 
 

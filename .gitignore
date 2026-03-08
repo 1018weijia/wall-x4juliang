@@ -268,3 +268,9 @@ NOTES.md
 .env
 .env.local
 .env.*.local
+
+# checkpoint data
+ckpt/
+stack_bowls_rc/
+libero_all/
+rollouts/

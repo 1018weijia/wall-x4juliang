@@ -110,8 +110,8 @@ def load_lerobot_dataset(
 
     for i in tqdm(range(len(fast_dataset))):
         sample = fast_dataset[i]
-        action = sample["action"]  # torch.Tensor
-        propri = sample["observation.state"]
+        action = sample["actions"]  # torch.Tensor
+        propri = sample["state"]
 
         for key, action_keys in trajectory_keys.items():
             for action_key, action_range in action_keys.items():
@@ -157,9 +157,9 @@ def compute_action_normalizer(
 
 def main() -> None:
 
-    repo_id = "libero_all"  # your dataset name
-    data_root_path = "/mnt/data2/lfwj/wall-x4juliang/libero_all"
-    output_stats_dir = "/mnt/data2/lfwj/wall-x4juliang/libero_all"
+    repo_id = "stack_bowls_rc"  # your dataset name
+    data_root_path = "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc"
+    output_stats_dir = "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc"
     trajectory_keys = {  # your dataset keys
         "propri": {
             "follow_right_ee_cartesian_pos": [0, 3],

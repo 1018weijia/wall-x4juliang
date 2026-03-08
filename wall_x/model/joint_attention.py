@@ -10,9 +10,20 @@ from wall_x.model.qwen2_5_based.modeling_qwen2_5_vl import (
     apply_multimodal_rotary_pos_emb,
 )
 from flash_attn import flash_attn_func
-from transformers.modeling_flash_attention_utils import (
-    is_flash_attn_greater_or_equal_2_10,
-)
+# transformers compat:
+# - Some versions expose `is_flash_attn_greater_or_equal_2_10` (meaning >= flash_attn 2.1.0).
+# - transformers==4.49.0 exposes the generic `is_flash_attn_greater_or_equal(version_str)` instead.
+try:
+    from transformers.modeling_flash_attention_utils import (  # type: ignore
+        is_flash_attn_greater_or_equal_2_10,
+    )
+except Exception:
+    from transformers.modeling_flash_attention_utils import (  # type: ignore
+        is_flash_attn_greater_or_equal,
+    )
+
+    def is_flash_attn_greater_or_equal_2_10() -> bool:
+        return bool(is_flash_attn_greater_or_equal("2.1.0"))
 from transformers.models.qwen2_5_vl.modeling_qwen2_5_vl import (
     Qwen2_5_VLRotaryEmbedding,
     repeat_kv,
