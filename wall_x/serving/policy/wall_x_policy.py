@@ -108,6 +108,8 @@ class WallXPolicy(BasePolicy):
             "pred_horizon": self.pred_horizon,
             "device": self.device,
             "predict_mode": self.predict_mode,
+            "camera_key": self.camera_key,
+            "agent_pos_dim": self.agent_pos_dim,
         }
 
     def reset(self) -> None:
@@ -175,7 +177,9 @@ class WallXPolicy(BasePolicy):
                 .to(torch.float32)
                 .numpy()
             )
-            return {"predict_action": predicted_actions}
+            # Keep both keys for backward/forward compatibility.
+            # README/client code expects "action"; internal callers may use "predict_action".
+            return {"action": predicted_actions, "predict_action": predicted_actions}
 
         except Exception as e:
             logger.error(f"Error during inference: {e}")

@@ -77,7 +77,10 @@ class WallXClient:
             max_size=None,
         )
 
-        self.metadata = msgpack.unpackb(await self.websocket.recv())
+        raw = await self.websocket.recv()
+        if isinstance(raw, str):
+            raise RuntimeError(f"Server sent text frame on connect:\n{raw}")
+        self.metadata = msgpack.unpackb(raw, raw=False)
         logger.info(f"Connected! Server metadata: {self.metadata}")
 
     async def predict(self, obs: Dict) -> Dict:
@@ -97,8 +100,11 @@ class WallXClient:
         if self.websocket is None:
             raise RuntimeError("Not connected. Call connect() first.")
 
-        await self.websocket.send(msgpack.packb(obs))
-        response = msgpack.unpackb(await self.websocket.recv())
+        await self.websocket.send(msgpack.packb(obs, use_bin_type=True))
+        raw = await self.websocket.recv()
+        if isinstance(raw, str):
+            raise RuntimeError(f"Server error (text frame):\n{raw}")
+        response = msgpack.unpackb(raw, raw=False)
         return response
 
     async def close(self):

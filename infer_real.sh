@@ -56,7 +56,18 @@ PREDICT_MODE="${PREDICT_MODE:-fast}"  # {fast,diffusion}
 
 # Camera keys must match what your *client* sends at runtime.
 # franka_real.yml has resolution constraints for these keys.
-CAMERA_KEYS=(${CAMERA_KEYS:-"face_view left_wrist_view right_wrist_view"})
+#
+# NOTE: Do NOT write the default as a single quoted string in an array assignment
+# (that would become 1 element). Parse from env var if provided, otherwise use
+# a real bash array default.
+declare -a CAMERA_KEYS_ARR
+if [[ -n "${CAMERA_KEYS:-}" ]]; then
+  # CAMERA_KEYS is a space-separated string, e.g.:
+  #   export CAMERA_KEYS="face_view left_wrist_view right_wrist_view"
+  read -r -a CAMERA_KEYS_ARR <<< "${CAMERA_KEYS}"
+else
+  CAMERA_KEYS_ARR=(face_view left_wrist_view right_wrist_view)
+fi
 
 echo "[infer_real.sh] CONDA_ENV=${CONDA_ENV:-<already-active>}"
 echo "[infer_real.sh] CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES}"
@@ -68,7 +79,7 @@ echo "[infer_real.sh] TRAIN_CONFIG_PATH=${TRAIN_CONFIG_PATH}"
 echo "[infer_real.sh] ACTION_TOKENIZER_PATH=${ACTION_TOKENIZER_PATH}"
 echo "[infer_real.sh] PRED_HORIZON=${PRED_HORIZON} ACTION_DIM=${ACTION_DIM} STATE_DIM=${STATE_DIM}"
 echo "[infer_real.sh] DTYPE=${DTYPE} PREDICT_MODE=${PREDICT_MODE}"
-echo "[infer_real.sh] CAMERA_KEYS=${CAMERA_KEYS[*]}"
+echo "[infer_real.sh] CAMERA_KEYS=${CAMERA_KEYS_ARR[*]}"
 
 if [[ ! -f "${TRAIN_CONFIG_PATH}" ]]; then
   echo "[infer_real.sh] ERROR: missing train config: ${TRAIN_CONFIG_PATH}" >&2
@@ -108,4 +119,4 @@ exec python -m wall_x.serving.launch_serving \
   --model-config.device "cuda" \
   --model-config.dtype "${DTYPE}" \
   --model-config.predict-mode "${PREDICT_MODE}" \
-  --model-config.camera-key "${CAMERA_KEYS[@]}"
+  --model-config.camera-key "${CAMERA_KEYS_ARR[@]}"

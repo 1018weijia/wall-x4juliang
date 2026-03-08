@@ -40,6 +40,15 @@ def prepare_batch(
     Returns:
         BatchFeature object ready for model input
     """
+    # Robustness: if camera_key is accidentally passed as ["a b c"], split it.
+    if (
+        isinstance(camera_key, list)
+        and len(camera_key) == 1
+        and isinstance(camera_key[0], str)
+        and " " in camera_key[0]
+    ):
+        camera_key = [k for k in camera_key[0].split(" ") if k]
+
     # Handle images - can be single image, list of images, or dict of images
     images = []
     images = [obs[key] for key in camera_key]
@@ -226,7 +235,6 @@ def format_text_with_vision_tokens(
     image_pad_symbol = "<|image_pad|>"
     propri_symbol = "<|propri|>"
     action_symbol = "<|action|>"
-    action_fast_symbol = "<|action_fast|>"
 
     # Camera name mapping
     camera_name_mapping = {
@@ -255,11 +263,16 @@ def format_text_with_vision_tokens(
         f"\nPredict the next action in robot action.\nProprioception: {propri_symbol}\n"
     )
     user_message = f"{user_request} {instruction}{text_prompt}{role_end_symbol}\n"
-    assistant_output = (
-        f"{role_start_symbol}assistant\n{action_fast_symbol}{role_end_symbol}\n"
-    )
-    if predict_mode == "diffusion":
-        assistant_output = f"{role_start_symbol}assistant\n{action_symbol * pred_horizon}{role_end_symbol}\n"
+    # IMPORTANT:
+    # For Wall-X "flow" action prediction (mode="predict"), the model injects action embeddings
+    # into positions where the input contains repeated "<|action|>" tokens. If these tokens are
+    # missing, generation will crash with flow_action_mask having 0 trues.
+    #
+    # During training (when not using a fast action tokenizer), prompts end with:
+    #   "<|im_start|>assistant\n" + "<|action|>" * horizon
+    #
+    # So we follow that format here for all predict modes.
+    assistant_output = f"{role_start_symbol}assistant\n{action_symbol * pred_horizon}"
     complete_text = prologue + user_message + assistant_output
 
     return complete_text

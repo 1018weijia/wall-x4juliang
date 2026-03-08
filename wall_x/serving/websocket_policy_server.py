@@ -21,6 +21,16 @@ import websockets.frames
 
 logger = logging.getLogger(__name__)
 
+def _pack_msgpack(obj: Any) -> bytes:
+    # Ensure strings are encoded as str on the receiving end (raw=False).
+    # use_bin_type ensures bytes are encoded as bin, not raw.
+    return msgpack.packb(obj, use_bin_type=True)
+
+
+def _unpack_msgpack(buf: bytes) -> Any:
+    # raw=False decodes msgpack raw types into Python str instead of bytes.
+    return msgpack.unpackb(buf, raw=False)
+
 
 class BasePolicy:
     """Base class for policies that can be served."""
@@ -90,13 +100,19 @@ class WebsocketPolicyServer:
             return
 
         # Send metadata to client
-        await websocket.send(msgpack.packb(self._metadata))
+        await websocket.send(_pack_msgpack(self._metadata))
 
         prev_total_time = None
         while True:
             try:
                 start_time = time.monotonic()
-                obs = msgpack.unpackb(await websocket.recv())
+                raw = await websocket.recv()
+                # websockets returns `str` for text frames; we only accept binary msgpack frames.
+                if isinstance(raw, str):
+                    raise TypeError(
+                        "Expected binary msgpack frame from client, got text frame."
+                    )
+                obs = _unpack_msgpack(raw)
 
                 infer_time = time.monotonic()
                 action = self._policy.infer(obs)
@@ -108,7 +124,7 @@ class WebsocketPolicyServer:
                 if prev_total_time is not None:
                     action["server_timing"]["prev_total_ms"] = prev_total_time * 1000
 
-                await websocket.send(msgpack.packb(action))
+                await websocket.send(_pack_msgpack(action))
                 prev_total_time = time.monotonic() - start_time
 
             except websockets.ConnectionClosed:
