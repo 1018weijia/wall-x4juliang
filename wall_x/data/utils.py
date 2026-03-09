@@ -43,6 +43,7 @@ KEY_MAPPINGS = {
         "state": "observation.state",
         "action": "action",
     },
+    # simulation
     "libero_all": {
         "camera": {
             "observation.images.faceImg": "face_view",
@@ -60,7 +61,9 @@ KEY_MAPPINGS = {
         "state": "observation.state",
         "action": "action",
     },
-    "stack_bowls_rc": {
+    # Real world deployment 
+    # Note:You must check the image key in raw dataset when inference !!
+    "stack_bowls_rc": { 
         "camera": {
             "global_image": "face_view",
             "right_image": "right_wrist_view",

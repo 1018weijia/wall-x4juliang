@@ -157,9 +157,9 @@ def compute_action_normalizer(
 
 def main() -> None:
 
-    repo_id = "stack_bowls_rc"  # your dataset name
-    data_root_path = "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc"
-    output_stats_dir = "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc"
+    repo_id = "stack_bowls_rc"  # custom dataset repo name
+    data_root_path = "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc" # dataset absolute path
+    output_stats_dir = "/mnt/data2/lfwj/wall-x4juliang/stack_bowls_rc" # dataset absolute path
     trajectory_keys = {  # your dataset keys
         "propri": {
             "follow_right_ee_cartesian_pos": [0, 3],

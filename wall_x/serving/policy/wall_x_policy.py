@@ -70,7 +70,7 @@ class WallXPolicy(BasePolicy):
         self.fixed_action_dim = action_dim
 
         self.action_dim = action_dim
-        self.agent_pos_dim = agent_pos_dim
+        self.agent_pos_dim = agent_pos_dim # Note: it used to be a bug but now fiexd
         self.pred_horizon = pred_horizon
         self.device = device
         self.predict_mode = predict_mode

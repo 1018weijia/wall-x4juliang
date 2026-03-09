@@ -23,16 +23,16 @@ def load_config(config_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pred_horizon", type=int, default=32)
-    parser.add_argument("--origin_action_dim", type=int, default=7)
+    parser.add_argument("--origin_action_dim", type=int, default=7) # modified here !!!!
     args = parser.parse_args()
 
     origin_action_dim = args.origin_action_dim
     pred_horizon = args.pred_horizon
 
     # get train config
-    model_path = "/mnt/data2/lfwj/wall-x4juliang/ckpt/franka/29"
-    action_tokenizer_path = "/path/to/Models/fast"
-    save_dir = "/mnt/data2/lfwj/wall-x4juliang/openloop"
+    model_path = "/mnt/data2/lfwj/wall-x4juliang/ckpt/franka/29" # modified here !!!!
+    action_tokenizer_path = "/path/to/Models/fast" # not use
+    save_dir = "/mnt/data2/lfwj/wall-x4juliang/openloop" # modified here !!!!
     path = f"{model_path}/config.yml"
     config = load_config(path)
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
     total_frames = len(dataloader)
 
     predict_mode = "fast" if config.get("use_fast_tokenizer", False) else "diffusion"
-    action_dim = 7 if predict_mode == "diffusion" else origin_action_dim
+    action_dim = 7 if predict_mode == "diffusion" else origin_action_dim # modified here !!!!
     gt_traj = torch.zeros((total_frames, origin_action_dim))
     pred_traj = torch.zeros((total_frames, origin_action_dim))
 
