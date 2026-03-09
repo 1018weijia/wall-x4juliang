@@ -16,7 +16,7 @@ import socket
 import sys
 import yaml
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 try:
     import tyro  # type: ignore
@@ -42,10 +42,10 @@ class ModelConfig:
 
     # Path to the pretrained model checkpoint
     model_path: str
-    # Path to the action tokenizer
-    action_tokenizer_path: str
     # Path to train config yaml
     train_config_path: str
+    # Optional path to the action tokenizer (only needed when using a fast action tokenizer setup)
+    action_tokenizer_path: Optional[str] = None
     # Action dimension for the environment
     action_dim: int = 7
     # State dimension for the environment
@@ -91,7 +91,7 @@ class Args:
 DEFAULT_CONFIGS: dict[EnvMode, ModelConfig] = {
     EnvMode.LIBERO: ModelConfig(
         model_path="/path/to/model",
-        action_tokenizer_path="/path/to/action_tokenizer",
+        action_tokenizer_path=None,
         train_config_path="/path/to/train_config",
         state_dim=8,
         action_dim=7,
@@ -103,7 +103,7 @@ DEFAULT_CONFIGS: dict[EnvMode, ModelConfig] = {
     ),
     EnvMode.ALOHA: ModelConfig(
         model_path="/path/to/model",
-        action_tokenizer_path="/path/to/action_tokenizer",
+        action_tokenizer_path=None,
         train_config_path="/path/to/train_config",
         state_dim=14,
         action_dim=14,
@@ -140,10 +140,11 @@ def create_policy(args: Args) -> WallXPolicy:
     if not Path(config.model_path).exists():
         logger.warning(f"Model path does not exist: {config.model_path}")
 
-    if not Path(config.action_tokenizer_path).exists():
-        logger.warning(
-            f"Action tokenizer path does not exist: {config.action_tokenizer_path}"
-        )
+    if config.action_tokenizer_path:
+        if not Path(config.action_tokenizer_path).exists():
+            logger.warning(
+                f"Action tokenizer path does not exist: {config.action_tokenizer_path}"
+            )
 
     with open(config.train_config_path, "r") as f:
         train_config = yaml.load(f, Loader=yaml.FullLoader)
@@ -237,7 +238,7 @@ def _parse_args_argparse(argv: List[str]) -> Args:
     # tyro-style nested flags used in README/infer scripts.
     parser.add_argument("--model-config.model-path", dest="model_path", type=str)
     parser.add_argument(
-        "--model-config.action-tokenizer-path", dest="action_tokenizer_path", type=str
+        "--model-config.action-tokenizer-path", dest="action_tokenizer_path", type=str, default=None
     )
     parser.add_argument(
         "--model-config.train-config-path", dest="train_config_path", type=str
@@ -274,7 +275,7 @@ def _parse_args_argparse(argv: List[str]) -> Args:
     if wants_model_config:
         missing = [
             k
-            for k in ["model_path", "action_tokenizer_path", "train_config_path"]
+            for k in ["model_path", "train_config_path"]
             if getattr(ns, k) is None
         ]
         if missing:

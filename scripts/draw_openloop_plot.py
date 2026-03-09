@@ -23,16 +23,16 @@ def load_config(config_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--pred_horizon", type=int, default=32)
-    parser.add_argument("--origin_action_dim", type=int, default=14)
+    parser.add_argument("--origin_action_dim", type=int, default=7)
     args = parser.parse_args()
 
     origin_action_dim = args.origin_action_dim
     pred_horizon = args.pred_horizon
 
     # get train config
-    model_path = "/path/to/your/checkpoint"
+    model_path = "/mnt/data2/lfwj/wall-x4juliang/ckpt/franka/29"
     action_tokenizer_path = "/path/to/Models/fast"
-    save_dir = "/path/to/save/dir"
+    save_dir = "/mnt/data2/lfwj/wall-x4juliang/openloop"
     path = f"{model_path}/config.yml"
     config = load_config(path)
 
@@ -40,7 +40,8 @@ if __name__ == "__main__":
 
     # load model with customized robot config
     model = Qwen2_5_VLMoEForAction.from_pretrained(
-        model_path, train_config=config, action_tokenizer_path=action_tokenizer_path
+        model_path, train_config=config, 
+        # action_tokenizer_path=action_tokenizer_path
     )
 
     model.set_normalizer(
@@ -62,7 +63,7 @@ if __name__ == "__main__":
     total_frames = len(dataloader)
 
     predict_mode = "fast" if config.get("use_fast_tokenizer", False) else "diffusion"
-    action_dim = 14 if predict_mode == "diffusion" else origin_action_dim
+    action_dim = 7 if predict_mode == "diffusion" else origin_action_dim
     gt_traj = torch.zeros((total_frames, origin_action_dim))
     pred_traj = torch.zeros((total_frames, origin_action_dim))
 

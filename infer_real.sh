@@ -26,7 +26,7 @@ export CUDA_VISIBLE_DEVICES="${CUDA_VISIBLE_DEVICES:-2}"
 
 ENV_MODE="${ENV_MODE:-aloha}"  # {aloha,libero} (only affects default presets/metadata)
 HOST="${HOST:-0.0.0.0}"
-PORT="${PORT:-32157}"
+PORT="${PORT:-8000}"
 
 CKPT_ROOT="${CKPT_ROOT:-${WALLX_ROOT}/ckpt/franka}"
 MODEL_PATH="${MODEL_PATH:-}"
@@ -44,9 +44,9 @@ if [[ -z "${MODEL_PATH}" ]]; then
 fi
 
 TRAIN_CONFIG_PATH="${TRAIN_CONFIG_PATH:-${MODEL_PATH}/config.yml}"
-# For this repo's checkpoints, the action tokenizer artifacts (tokenizer.json, preprocessor_config.json, ...)
-# are saved alongside model.safetensors, so using the same folder is usually correct.
-ACTION_TOKENIZER_PATH="${ACTION_TOKENIZER_PATH:-${MODEL_PATH}}"
+# To align with training (use_fast_tokenizer: false), action tokenizer is optional in serving.
+# If you do want to use a fast action tokenizer, set ACTION_TOKENIZER_PATH to a valid folder.
+ACTION_TOKENIZER_PATH="${ACTION_TOKENIZER_PATH:-}"
 
 PRED_HORIZON="${PRED_HORIZON:-32}"  # franka_real.yml:data.action_horizon
 ACTION_DIM="${ACTION_DIM:-7}"       # stack_bowls_rc single-arm: 3+3+1
@@ -76,7 +76,7 @@ echo "[infer_real.sh] HOST=${HOST}"
 echo "[infer_real.sh] PORT=${PORT}"
 echo "[infer_real.sh] MODEL_PATH=${MODEL_PATH}"
 echo "[infer_real.sh] TRAIN_CONFIG_PATH=${TRAIN_CONFIG_PATH}"
-echo "[infer_real.sh] ACTION_TOKENIZER_PATH=${ACTION_TOKENIZER_PATH}"
+echo "[infer_real.sh] ACTION_TOKENIZER_PATH=${ACTION_TOKENIZER_PATH:-<disabled>}"
 echo "[infer_real.sh] PRED_HORIZON=${PRED_HORIZON} ACTION_DIM=${ACTION_DIM} STATE_DIM=${STATE_DIM}"
 echo "[infer_real.sh] DTYPE=${DTYPE} PREDICT_MODE=${PREDICT_MODE}"
 echo "[infer_real.sh] CAMERA_KEYS=${CAMERA_KEYS_ARR[*]}"
@@ -111,7 +111,6 @@ exec python -m wall_x.serving.launch_serving \
   --host "${HOST}" \
   --port "${PORT}" \
   --model-config.model-path "${MODEL_PATH}" \
-  --model-config.action-tokenizer-path "${ACTION_TOKENIZER_PATH}" \
   --model-config.train-config-path "${TRAIN_CONFIG_PATH}" \
   --model-config.action-dim "${ACTION_DIM}" \
   --model-config.state-dim "${STATE_DIM}" \
@@ -119,4 +118,5 @@ exec python -m wall_x.serving.launch_serving \
   --model-config.device "cuda" \
   --model-config.dtype "${DTYPE}" \
   --model-config.predict-mode "${PREDICT_MODE}" \
+  ${ACTION_TOKENIZER_PATH:+--model-config.action-tokenizer-path "${ACTION_TOKENIZER_PATH}"} \
   --model-config.camera-key "${CAMERA_KEYS_ARR[@]}"

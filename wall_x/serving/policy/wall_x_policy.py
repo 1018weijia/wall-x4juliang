@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import torch
 import copy
 import numpy as np
@@ -18,7 +18,7 @@ class WallXPolicy(BasePolicy):
         self,
         model_path: str,
         train_config: dict,
-        action_tokenizer_path: str,
+        action_tokenizer_path: Optional[str],
         action_dim: int,
         agent_pos_dim: int,
         pred_horizon: int,
