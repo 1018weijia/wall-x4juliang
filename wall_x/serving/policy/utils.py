@@ -120,7 +120,9 @@ def prepare_batch(
 
     action_token_id = processor.tokenizer.convert_tokens_to_ids("<|action|>")
     moe_token_types = inputs.input_ids == action_token_id
-    inputs["moe_token_types"] = torch.tensor(moe_token_types)
+    # moe_token_types is already a boolean tensor; avoid wrapping with torch.tensor(...)
+    # which triggers a warning and may detach device/dtype unexpectedly.
+    inputs["moe_token_types"] = moe_token_types
 
     # obs["dataset_names"]="libero_all"
 
@@ -128,7 +130,8 @@ def prepare_batch(
     if "state" in obs:
         state = obs["state"]
         if isinstance(state, np.ndarray):
-            state = torch.from_numpy(state).float()
+            # msgpack-numpy may create read-only views; copy to avoid undefined behavior warnings.
+            state = torch.from_numpy(np.array(state, copy=True)).float()
         elif not isinstance(state, torch.Tensor):
             state = torch.tensor(state, dtype=torch.float32)
 
@@ -148,13 +151,19 @@ def prepare_batch(
         if state.shape[-1] > agent_pos_dim:
             agent_pos_mask[:, :, agent_pos_dim:] = 0
 
-        normalizer_propri.normalize_data(state, [obs["dataset_names"]] * state.shape[0])
+        dataset_name = obs["dataset_names"]
+        # Allow either "stack_bowls_rc" or ["stack_bowls_rc"] from clients.
+        if isinstance(dataset_name, list) and len(dataset_name) == 1:
+            dataset_name = dataset_name[0]
+
+        # IMPORTANT: normalize_data returns a new tensor; assign it.
+        state = normalizer_propri.normalize_data(state, [dataset_name] * state.shape[0])
 
         inputs["proprioception"] = state
         inputs["agent_pos_mask"] = agent_pos_mask
 
     # Add dataset name (required by model)
-    inputs["dataset_names"] = [obs["dataset_names"]] * state.shape[0]
+    inputs["dataset_names"] = [dataset_name] * state.shape[0]
 
     # Move all tensors to device
     for key in inputs:
