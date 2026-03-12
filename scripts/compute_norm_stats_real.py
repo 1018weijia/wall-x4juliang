@@ -110,7 +110,8 @@ def load_lerobot_dataset(
 
     for i in tqdm(range(len(fast_dataset))):
         sample = fast_dataset[i]
-        action = sample["actions"]  # torch.Tensor
+        # 这里原本是action,但和真机数据集里面不一致，这里做了兼容性处理
+        action = sample.get("actions", sample.get("action"))  
         propri = sample["state"]
 
         for key, action_keys in trajectory_keys.items():

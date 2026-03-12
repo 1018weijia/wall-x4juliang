@@ -8,13 +8,13 @@ log_project: "libero_juliang"
 use_fast_tokenizer: false
 
 resume:
-  ckpt: /mnt/data2/lfwj/wall-x4juliang/wall-oss-flow  # 你从huggingface 上下载好的模型
+  ckpt: /mnt/data2/lfwj/wall-x4juliang/wall-oss-flow  
   try_harder: true
 
 seed: 10233
 model_type: qwen2_5
 
-pretrained_wallx_path: "/mnt/data2/lfwj/lingbot-vla/Qwen2.5-VL-3B-Instruct"
+pretrained_wallx_path: "/mnt/data2/lfwj/lingbot-vla/Qwen2.5-VL-3B-Instruct" # 用resume的
 processor_path: "/mnt/data2/lfwj/lingbot-vla/Qwen2.5-VL-3B-Instruct"
 pretrained_qwen_vl_path: "/mnt/data2/lfwj/lingbot-vla/Qwen2.5-VL-3B-Instruct"
 qwen_vl_act_config_path: "/mnt/data2/lfwj/wall-x4juliang/wall-oss-flow/config.json"

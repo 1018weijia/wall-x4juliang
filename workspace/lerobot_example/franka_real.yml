@@ -8,7 +8,7 @@ log_project: "libero_juliang_franka"
 use_fast_tokenizer: false
 
 resume:
-  ckpt: /mnt/data2/lfwj/wall-x4juliang/wall-oss-flow  # 你从huggingface 上下载好的模型
+  ckpt: /mnt/data2/lfwj/wall-x4juliang/wall-oss-flow  
   try_harder: true
 
 seed: 10233
